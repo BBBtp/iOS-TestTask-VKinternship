@@ -18,8 +18,10 @@ struct ReviewCellConfig {
     let onTapShowMore: (UUID) -> Void
     /// Аватар пользователя.
     let avatarImage: UIImage?
-    /// Имя и фамилия пользователя
+    /// Имя и фамилия пользователя.
     let username: NSAttributedString
+    /// Рейтинг отзыва.
+    let rating: UIImage
     
     /// Объект, хранящий посчитанные фреймы для ячейки отзыва.
     fileprivate let layout = ReviewCellLayout()
@@ -39,6 +41,7 @@ extension ReviewCellConfig: TableCellConfig {
         cell.createdLabel.attributedText = created
         cell.avatarImageView.image = avatarImage
         cell.usernameTextLabel.attributedText = username
+        cell.ratingImageView.image = rating
         cell.config = self
     }
     
@@ -71,6 +74,7 @@ final class ReviewCell: UITableViewCell {
     fileprivate let showMoreButton = UIButton()
     fileprivate let avatarImageView = UIImageView()
     fileprivate let usernameTextLabel = UILabel()
+    fileprivate let ratingImageView = UIImageView()
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -86,6 +90,7 @@ final class ReviewCell: UITableViewCell {
         guard let layout = config?.layout else { return }
         avatarImageView.frame = layout.avatarImageViewFrame
         usernameTextLabel.frame = layout.usernameTextLabelFrame
+        ratingImageView.frame = layout.ratingImageViewFrame
         reviewTextLabel.frame = layout.reviewTextLabelFrame
         createdLabel.frame = layout.createdLabelFrame
         showMoreButton.frame = layout.showMoreButtonFrame
@@ -100,6 +105,7 @@ private extension ReviewCell {
     func setupCell() {
         setupAvatarImageView()
         setupUsernameTextLabel()
+        setupRatingImageView()
         setupReviewTextLabel()
         setupCreatedLabel()
         setupShowMoreButton()
@@ -114,7 +120,12 @@ private extension ReviewCell {
     
     func setupUsernameTextLabel() {
         contentView.addSubview(usernameTextLabel)
-        usernameTextLabel.font = .username
+    }
+    
+    func setupRatingImageView() {
+        contentView.addSubview(ratingImageView)
+        ratingImageView.contentMode = .scaleAspectFill
+        avatarImageView.layer.masksToBounds = true
     }
     
     func setupReviewTextLabel() {
@@ -156,6 +167,7 @@ private final class ReviewCellLayout {
     private(set) var createdLabelFrame = CGRect.zero
     private(set) var avatarImageViewFrame = CGRect.zero
     private(set) var usernameTextLabelFrame = CGRect.zero
+    private(set) var ratingImageViewFrame = CGRect.zero
     
     // MARK: - Отступы
     
@@ -201,7 +213,12 @@ private final class ReviewCellLayout {
             size: config.username.boundingRect(width: textWidth).size
         )
         
-        maxY = avatarImageViewFrame.maxY + usernameToRatingSpacing
+        ratingImageViewFrame = CGRect(
+                    origin: CGPoint(x: textStartX, y: usernameTextLabelFrame.maxY + usernameToRatingSpacing),
+                    size: config.rating.size
+                )
+
+        maxY = ratingImageViewFrame.maxY + ratingToTextSpacing
         
         if !config.reviewText.isEmpty() {
             let currentTextHeight = (config.reviewText.font()?.lineHeight ?? .zero) * CGFloat(config.maxLines)
