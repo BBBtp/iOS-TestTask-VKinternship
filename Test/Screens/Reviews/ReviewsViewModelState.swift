@@ -7,4 +7,5 @@ struct ReviewsViewModelState {
     var shouldLoad = true
     var totalReviewsCount: Int = 0
     var totalReviewsItem: (any TableCellConfig)? = nil
+    
 }

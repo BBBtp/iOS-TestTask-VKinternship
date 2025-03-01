@@ -5,11 +5,13 @@ final class ReviewsViewModel: NSObject {
     
     /// Замыкание, вызываемое при изменении `state`.
     var onStateChange: ((State) -> Void)?
-    
+    /// Зымыкание  для обновления `UITableView`
+    var onNewReviewsAdded: (([IndexPath]) -> Void)?
     private var state: State
     private let reviewsProvider: ReviewsProvider
     private let ratingRenderer: RatingRenderer
     private let decoder: JSONDecoder
+    private var isLoading = false
     
     init(
         state: State = State(),
@@ -33,11 +35,22 @@ extension ReviewsViewModel {
     
     /// Метод получения отзывов.
     func getReviews() {
-        guard state.shouldLoad else { return }
+        guard state.shouldLoad, !isLoading else { return }
+        isLoading = true
         state.shouldLoad = false
-        reviewsProvider.getReviews(offset: state.offset, completion: gotReviews)
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            self.reviewsProvider.getReviews(offset: self.state.offset) { [weak self] result in
+                guard let self = self else { return }
+                
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                }
+                self.gotReviews(result)
+            }
+        }
     }
-    
+
 }
 
 // MARK: - Private
@@ -48,18 +61,40 @@ private extension ReviewsViewModel {
     func gotReviews(_ result: ReviewsProvider.GetReviewsResult) {
         do {
             let data = try result.get()
-            let reviews = try decoder.decode(Reviews.self, from: data)
-            state.items += reviews.items.map(makeReviewItem)
-            state.offset += state.limit
-            state.totalReviewsCount = reviews.count
-            state.totalReviewsItem = makeTotalReviewItem()
-            state.shouldLoad = state.offset < reviews.count
+            
+            DispatchQueue.global().async {
+                do {
+                    let reviews = try self.decoder.decode(Reviews.self, from: data)
+                    let newItems = reviews.items.map(self.makeReviewItem)
+                    let startIndex = self.state.items.count
+                    let endIndex = startIndex + newItems.count
+                    let indexPaths = (startIndex..<endIndex).map { IndexPath(row: $0, section: 0) }
+
+                    guard !newItems.isEmpty else { return }
+
+                    DispatchQueue.main.async {
+                        self.state.items += newItems
+                        self.state.offset += self.state.limit
+                        self.state.totalReviewsCount = reviews.count
+                        self.state.totalReviewsItem = self.makeTotalReviewItem()
+                        self.state.shouldLoad = self.state.offset < reviews.count
+                        self.onNewReviewsAdded?(indexPaths)
+                    }
+                } catch {
+                    self.state.shouldLoad = true
+                    DispatchQueue.main.async {
+                        print("Ошибка при декодировании данных: \(error)")
+                    }
+                }
+            }
         } catch {
-            state.shouldLoad = true
+            self.state.shouldLoad = true
+            DispatchQueue.main.async {
+                print("Ошибка при получении данных: \(error)")
+            }
         }
-        onStateChange?(state)
     }
-    
+
     /// Метод, вызываемый при нажатии на кнопку "Показать полностью...".
     /// Снимает ограничение на количество строк текста отзыва (раскрывает текст).
     func showMoreReview(with id: UUID) {
