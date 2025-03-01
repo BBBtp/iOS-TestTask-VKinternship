@@ -38,22 +38,21 @@ private extension ReviewsViewController {
         return reviewsView
     }
 
-    func setupViewModel() {
-    
-        viewModel.onNewReviewsAdded = { [weak reviewsView] indexPaths in
-            guard let tableView = reviewsView?.tableView else { return }
-
-            DispatchQueue.main.async {
-                if tableView.window != nil {
-                    tableView.performBatchUpdates {
-                        tableView.insertRows(at: indexPaths, with: .automatic)
+        func setupViewModel() {
+            viewModel.onNewReviewsAdded = { [weak self] indexPaths in
+                guard let self = self else { return }
+                
+                DispatchQueue.main.async { [weak tableView = self.reviewsView.tableView] in
+                    guard let tableView = tableView else { return }
+                    
+                    if tableView.window != nil {
+                        tableView.performBatchUpdates {
+                            tableView.insertRows(at: indexPaths, with: .automatic)
+                        }
+                    } else {
+                        tableView.reloadData()
                     }
-                } else {
-                    tableView.reloadData() 
                 }
             }
         }
-    }
-
-
 }

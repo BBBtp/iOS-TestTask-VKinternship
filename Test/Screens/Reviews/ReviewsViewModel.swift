@@ -39,9 +39,9 @@ extension ReviewsViewModel {
         isLoading = true
         state.shouldLoad = false
         
-        DispatchQueue.global(qos: .userInitiated).async {
-            self.reviewsProvider.getReviews(offset: self.state.offset) { [weak self] result in
-                guard let self = self else { return }
+        DispatchQueue.global().async { [weak self] in
+            guard let self = self else {return}
+            self.reviewsProvider.getReviews(offset: self.state.offset) {result in
                 
                 DispatchQueue.main.async {
                     self.isLoading = false
@@ -50,7 +50,7 @@ extension ReviewsViewModel {
             }
         }
     }
-
+    
 }
 
 // MARK: - Private
@@ -62,16 +62,17 @@ private extension ReviewsViewModel {
         do {
             let data = try result.get()
             
-            DispatchQueue.global().async {
+            DispatchQueue.global().async { [weak self] in
+                guard let self = self else {return}
                 do {
                     let reviews = try self.decoder.decode(Reviews.self, from: data)
                     let newItems = reviews.items.map(self.makeReviewItem)
                     let startIndex = self.state.items.count
                     let endIndex = startIndex + newItems.count
                     let indexPaths = (startIndex..<endIndex).map { IndexPath(row: $0, section: 0) }
-
+                    
                     guard !newItems.isEmpty else { return }
-
+                    
                     DispatchQueue.main.async {
                         self.state.items += newItems
                         self.state.offset += self.state.limit
@@ -82,19 +83,13 @@ private extension ReviewsViewModel {
                     }
                 } catch {
                     self.state.shouldLoad = true
-                    DispatchQueue.main.async {
-                        print("Ошибка при декодировании данных: \(error)")
-                    }
                 }
             }
         } catch {
             self.state.shouldLoad = true
-            DispatchQueue.main.async {
-                print("Ошибка при получении данных: \(error)")
-            }
         }
     }
-
+    
     /// Метод, вызываемый при нажатии на кнопку "Показать полностью...".
     /// Снимает ограничение на количество строк текста отзыва (раскрывает текст).
     func showMoreReview(with id: UUID) {
