@@ -9,6 +9,8 @@ final class ReviewsViewModel: NSObject {
     var onNewReviewsAdded: (([IndexPath]) -> Void)?
     /// Замыкание для открытия полного текста отзыва
     var onReviewExpanded: (([IndexPath]) -> Void)?
+    /// Замыкание для состояния загрузки
+    var onLoading: ((Bool) -> Void)?
     private var state: State
     private let reviewsProvider: ReviewsProvider
     private let ratingRenderer: RatingRenderer
@@ -46,6 +48,7 @@ extension ReviewsViewModel {
         guard state.shouldLoad, !isLoading else { return }
         isLoading = true
         state.shouldLoad = false
+        onLoading?(isLoading)
         
         DispatchQueue.global().async { [weak self] in
             guard let self = self else {return}
@@ -54,6 +57,7 @@ extension ReviewsViewModel {
                     
                     DispatchQueue.main.async {
                         self.isLoading = false
+                        self.onLoading?(self.isLoading)
                     }
                     self.gotReviews(result)
                 }

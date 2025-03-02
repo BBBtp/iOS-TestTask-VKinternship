@@ -28,6 +28,7 @@
 		21ED1F622D69CBCD0012D6F6 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21ED1F612D69CBCD0012D6F6 /* RootView.swift */; };
 		21ED1F652D69D0340012D6F6 /* ReviewsScreenFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21ED1F642D69D0340012D6F6 /* ReviewsScreenFactory.swift */; };
 		430BF8FE2D7308D50088B02D /* TotalReviewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 430BF8FD2D7308D50088B02D /* TotalReviewCell.swift */; };
+		430BF9032D74A05C0088B02D /* Loader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 430BF9022D74A05C0088B02D /* Loader.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -53,6 +54,7 @@
 		21ED1F612D69CBCD0012D6F6 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		21ED1F642D69D0340012D6F6 /* ReviewsScreenFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewsScreenFactory.swift; sourceTree = "<group>"; };
 		430BF8FD2D7308D50088B02D /* TotalReviewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TotalReviewCell.swift; sourceTree = "<group>"; };
+		430BF9022D74A05C0088B02D /* Loader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Loader.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -138,6 +140,7 @@
 		21B82E2C2D47B0640085DAA2 /* Test */ = {
 			isa = PBXGroup;
 			children = (
+				430BF9012D74A0460088B02D /* Loader */,
 				21B82E2B2D47B0640085DAA2 /* AppDelegate.swift */,
 				21B82E2A2D47B0640085DAA2 /* Screens */,
 				2166686D2D48DEBF009AAA76 /* Protocols */,
@@ -188,6 +191,14 @@
 				21ED1F612D69CBCD0012D6F6 /* RootView.swift */,
 			);
 			path = Root;
+			sourceTree = "<group>";
+		};
+		430BF9012D74A0460088B02D /* Loader */ = {
+			isa = PBXGroup;
+			children = (
+				430BF9022D74A05C0088B02D /* Loader.swift */,
+			);
+			path = Loader;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -277,6 +288,7 @@
 				21B82E302D47B0640085DAA2 /* ReviewsViewController.swift in Sources */,
 				2166A0F42D4A5B25009AAA76 /* ReviewsView.swift in Sources */,
 				216668732D48E89A009AAA76 /* Colors.swift in Sources */,
+				430BF9032D74A05C0088B02D /* Loader.swift in Sources */,
 				21B841712D47C5F00085DAA2 /* TableCellConfig.swift in Sources */,
 				21ED1F652D69D0340012D6F6 /* ReviewsScreenFactory.swift in Sources */,
 				2166686F2D48E23F009AAA76 /* Fonts.swift in Sources */,
