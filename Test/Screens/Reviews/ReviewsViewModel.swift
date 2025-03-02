@@ -189,20 +189,11 @@ private extension ReviewsViewModel {
             font: .username
         )
         let rating = ratingRenderer.ratingImage(review.rating)
-        let group = DispatchGroup()
         let avatar = review.avatar
-        let availablePhotos = [
-            UIImage(named: "IMG_0001"),
-            UIImage(named: "IMG_0002"),
-            UIImage(named: "IMG_0003"),
-            UIImage(named: "IMG_0004"),
-            UIImage(named: "IMG_0005"),
-        ]
         
-        let randomPhotoCount = Int.random(in: 0..<availablePhotos.count)
-        let photos = Array(availablePhotos.prefix(randomPhotoCount))
-        
+        let group = DispatchGroup()
         var avatarImage: UIImage? = nil
+        var reviewImages: [UIImage] = []
         
         if avatar == review.avatar {
             group.enter()
@@ -212,6 +203,15 @@ private extension ReviewsViewModel {
             }
         }
         
+        for photo in review.photos {
+            group.enter()
+            fetchImage(with: photo) { image in
+                if let image = image {
+                    reviewImages.append(image)
+                }
+                group.leave()
+            }
+        }
         fetchImage(with: review.avatar) { [weak self] avatarImage in
             guard let self = self else {return}
             let item = ReviewItem(
@@ -221,7 +221,7 @@ private extension ReviewsViewModel {
                 avatarImage: avatarImage ?? UIImage(named: "avatarImage"),
                 username: username,
                 rating: rating,
-                photos: photos
+                photos: reviewImages
             )
             completion(item)
         }
