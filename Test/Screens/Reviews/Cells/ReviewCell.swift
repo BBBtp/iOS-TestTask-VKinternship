@@ -22,6 +22,8 @@ struct ReviewCellConfig {
     let username: NSAttributedString
     /// Рейтинг отзыва.
     let rating: UIImage
+    /// Фото отзыва.
+    let photos: [UIImage]
     
     /// Объект, хранящий посчитанные фреймы для ячейки отзыва.
     fileprivate let layout = ReviewCellLayout()
@@ -42,6 +44,16 @@ extension ReviewCellConfig: TableCellConfig {
         cell.avatarImageView.image = avatarImage
         cell.usernameTextLabel.attributedText = username
         cell.ratingImageView.image = rating
+        cell.photosStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+            for photo in photos {
+                let imageView = UIImageView(image: photo)
+                imageView.contentMode = .scaleAspectFill
+                imageView.layer.cornerRadius = Layout.photoCornerRadius
+                imageView.clipsToBounds = true
+                imageView.frame = CGRect(origin: .zero, size: Layout.photoSize)
+                cell.photosStackView.addArrangedSubview(imageView)
+            }
+        
         cell.config = self
     }
     
@@ -75,6 +87,7 @@ final class ReviewCell: UITableViewCell {
     fileprivate let avatarImageView = UIImageView()
     fileprivate let usernameTextLabel = UILabel()
     fileprivate let ratingImageView = UIImageView()
+    fileprivate let photosStackView = UIStackView()
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -91,6 +104,7 @@ final class ReviewCell: UITableViewCell {
         avatarImageView.frame = layout.avatarImageViewFrame
         usernameTextLabel.frame = layout.usernameTextLabelFrame
         ratingImageView.frame = layout.ratingImageViewFrame
+        photosStackView.frame = layout.photosStackViewFrame
         reviewTextLabel.frame = layout.reviewTextLabelFrame
         createdLabel.frame = layout.createdLabelFrame
         showMoreButton.frame = layout.showMoreButtonFrame
@@ -106,6 +120,7 @@ private extension ReviewCell {
         setupAvatarImageView()
         setupUsernameTextLabel()
         setupRatingImageView()
+        setupPhotosStackView()
         setupReviewTextLabel()
         setupCreatedLabel()
         setupShowMoreButton()
@@ -126,6 +141,14 @@ private extension ReviewCell {
         contentView.addSubview(ratingImageView)
         ratingImageView.contentMode = .scaleAspectFill
         avatarImageView.layer.masksToBounds = true
+    }
+    
+    func setupPhotosStackView() {
+        contentView.addSubview(photosStackView)
+        photosStackView.axis = .horizontal
+        photosStackView.spacing = 8.0
+        photosStackView.distribution = .fillEqually
+        photosStackView.alignment = .center
     }
     
     func setupReviewTextLabel() {
@@ -166,7 +189,7 @@ private final class ReviewCellLayout {
     fileprivate static let avatarCornerRadius = 18.0
     fileprivate static let photoCornerRadius = 8.0
     
-    private static let photoSize = CGSize(width: 55.0, height: 66.0)
+    fileprivate static let photoSize = CGSize(width: 55.0, height: 66.0)
     private static let showMoreButtonSize = Config.showMoreText.size()
     
     // MARK: - Фреймы
@@ -177,6 +200,7 @@ private final class ReviewCellLayout {
     private(set) var avatarImageViewFrame = CGRect.zero
     private(set) var usernameTextLabelFrame = CGRect.zero
     private(set) var ratingImageViewFrame = CGRect.zero
+    private(set) var photosStackViewFrame = CGRect.zero
     
     // MARK: - Отступы
     
@@ -209,6 +233,7 @@ private final class ReviewCellLayout {
         var maxY = insets.top
         var showShowMoreButton = false
         
+        // Аватар
         avatarImageViewFrame = CGRect(
             origin: CGPoint(x: insets.left, y: maxY),
             size: Self.avatarSize
@@ -217,18 +242,33 @@ private final class ReviewCellLayout {
         let textStartX = avatarImageViewFrame.maxX + avatarToUsernameSpacing
         let textWidth = width - Self.avatarSize.width - avatarToUsernameSpacing
         
+        // Имя пользователя
         usernameTextLabelFrame = CGRect(
             origin: CGPoint(x: textStartX, y: maxY),
             size: config.username.boundingRect(width: textWidth).size
         )
         
+        // Рейтинг
         ratingImageViewFrame = CGRect(
-                    origin: CGPoint(x: textStartX, y: usernameTextLabelFrame.maxY + usernameToRatingSpacing),
-                    size: config.rating.size
-                )
+            origin: CGPoint(x: textStartX, y: usernameTextLabelFrame.maxY + usernameToRatingSpacing),
+            size: config.rating.size
+        )
 
         maxY = ratingImageViewFrame.maxY + ratingToTextSpacing
         
+        // Фотографии
+        if !config.photos.isEmpty {
+            let photosTotalWidth = CGFloat(config.photos.count) * Layout.photoSize.width + CGFloat(config.photos.count - 1) * photosSpacing
+            photosStackViewFrame = CGRect(
+                origin: CGPoint(x: textStartX, y: maxY),
+                size: CGSize(width: photosTotalWidth, height: Layout.photoSize.height)
+            )
+            maxY = photosStackViewFrame.maxY + photosToTextSpacing
+        } else {
+            photosStackViewFrame = .zero
+        }
+        
+        // Текст отзыва
         if !config.reviewText.isEmpty() {
             let currentTextHeight = (config.reviewText.font()?.lineHeight ?? .zero) * CGFloat(config.maxLines)
             let actualTextHeight = config.reviewText.boundingRect(width: textWidth).size.height
@@ -241,6 +281,7 @@ private final class ReviewCellLayout {
             maxY = reviewTextLabelFrame.maxY + reviewTextToCreatedSpacing
         }
         
+        // Кнопка "Показать полностью"
         if showShowMoreButton {
             showMoreButtonFrame = CGRect(
                 origin: CGPoint(x: textStartX, y: maxY),
@@ -251,6 +292,7 @@ private final class ReviewCellLayout {
             showMoreButtonFrame = .zero
         }
         
+        // Время создания отзыва
         createdLabelFrame = CGRect(
             origin: CGPoint(x: textStartX, y: maxY),
             size: config.created.boundingRect(width: textWidth).size

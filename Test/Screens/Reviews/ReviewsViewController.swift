@@ -59,9 +59,17 @@ private extension ReviewsViewController {
     func setupViewModel() {
         viewModel.onLoading = { [weak self] isLoading in
             guard let self = self else {return}
-            DispatchQueue.main.async {
-                self.reviewsView.showLoader(isLoading)
+            
+            if self.viewModel.shouldShowLoader {
+                DispatchQueue.main.async {
+                    self.reviewsView.showLoader(isLoading)
+                }
+            } else {
+                DispatchQueue.main.async {
+                    self.reviewsView.showLoader(false)
+                }
             }
+           
         }
         
         viewModel.onNewReviewsAdded = { [weak self] indexPaths in

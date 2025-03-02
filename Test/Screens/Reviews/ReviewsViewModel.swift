@@ -11,11 +11,16 @@ final class ReviewsViewModel: NSObject {
     var onReviewExpanded: (([IndexPath]) -> Void)?
     /// Замыкание для состояния загрузки
     var onLoading: ((Bool) -> Void)?
+    /// Флаг для показа лоадера
+    var shouldShowLoader: Bool {
+        return !hasLoadedOnce
+    }
+    
     private var state: State
     private let reviewsProvider: ReviewsProvider
     private let ratingRenderer: RatingRenderer
     private let decoder: JSONDecoder
-    private var isLoading = false
+    private var hasLoadedOnce = false
     
     init(
         state: State = State(),
@@ -45,10 +50,9 @@ extension ReviewsViewModel {
     
     /// Метод получения отзывов.
     func getReviews() {
-        guard state.shouldLoad, !isLoading else { return }
-        isLoading = true
-        state.shouldLoad = false
-        onLoading?(isLoading)
+        guard state.shouldLoad else { return }
+        state.shouldLoad = true
+        onLoading?(state.shouldLoad)
         
         DispatchQueue.global().async { [weak self] in
             guard let self = self else {return}
@@ -56,19 +60,25 @@ extension ReviewsViewModel {
                 .getReviews(offset: self.state.offset) {result in
                     
                     DispatchQueue.main.async {
-                        self.isLoading = false
-                        self.onLoading?(self.isLoading)
+                        self.state.shouldLoad = false
+                        self.onLoading?(self.state.shouldLoad)
                     }
                     self.gotReviews(result)
+                    
+                    if !self.hasLoadedOnce {
+                        self.hasLoadedOnce = true
+                        DispatchQueue.main.async {
+                            self.onLoading?(false)
+                        }
+                    }
                 }
         }
     }
     
     /// Метод для pull-to-refresh
     func refreshReviews(completion: @escaping () -> Void) {
-        guard state.shouldLoad, !isLoading else { return }
-        isLoading = true
-        state.shouldLoad = false
+        guard state.shouldLoad else { return }
+        state.shouldLoad = true
         state.offset = 0
         state.items.removeAll()
         
@@ -78,7 +88,7 @@ extension ReviewsViewModel {
                 .getReviews(offset: self.state.offset) {result in
                     
                     DispatchQueue.main.async {
-                        self.isLoading = false
+                        self.state.shouldLoad = false
                     }
                     self.gotReviews(result)
                     DispatchQueue.main.async {
@@ -169,13 +179,26 @@ private extension ReviewsViewModel {
             font: .username
         )
         let rating = ratingRenderer.ratingImage(review.rating)
+        
+        let photos = [
+            UIImage(named: "IMG_0001"),
+            UIImage(named: "IMG_0002"),
+            UIImage(named: "IMG_0003"),
+            UIImage(named: "IMG_0004"),
+            UIImage(named: "IMG_0005"),
+        ].compactMap {$0}
+        
+        let randomPhotoCount = Int.random(in: 0..<photos.count)
+        let selectPhotos = Array(photos.prefix(randomPhotoCount))
+        
         let item = ReviewItem(
             reviewText: reviewText,
             created: created,
             onTapShowMore: showMoreReview,
             avatarImage: UIImage(named: "avatarImage"),
             username: username,
-            rating: rating
+            rating: rating,
+            photos: selectPhotos
         )
         return item
     }
