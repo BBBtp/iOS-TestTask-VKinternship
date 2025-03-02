@@ -7,6 +7,8 @@ final class ReviewsViewModel: NSObject {
     var onStateChange: ((State) -> Void)?
     /// Зымыкание  для обновления `UITableView`
     var onNewReviewsAdded: (([IndexPath]) -> Void)?
+    /// Замыкание для открытия полного текста отзыва
+    var onReviewExpanded: (([IndexPath]) -> Void)?
     private var state: State
     private let reviewsProvider: ReviewsProvider
     private let ratingRenderer: RatingRenderer
@@ -99,7 +101,10 @@ private extension ReviewsViewModel {
         else { return }
         item.maxLines = .zero
         state.items[index] = item
-        onStateChange?(state)
+        let indexPath = IndexPath(row: index, section: 0)
+            DispatchQueue.main.async {
+                self.onReviewExpanded?([indexPath])
+            }
     }
     
 }
