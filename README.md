@@ -6,4 +6,4 @@
 
 ## Скриншот итогового результата:
 
-![Минимальный вариант](/Screenshots/simulator_screenshot_F0209147-713D-4AAA-8300-2EE96EE89630.png)
+![Минимальный вариант](/Screenshots/screen.png)
