@@ -27,6 +27,12 @@ final class ReviewsViewModel: NSObject {
         self.decoder = decoder
     }
     
+    deinit {
+        onStateChange = nil
+        onNewReviewsAdded = nil
+        onReviewExpanded = nil
+    }
+    
 }
 
 // MARK: - Internal
@@ -43,13 +49,38 @@ extension ReviewsViewModel {
         
         DispatchQueue.global().async { [weak self] in
             guard let self = self else {return}
-            self.reviewsProvider.getReviews(offset: self.state.offset) {result in
-                
-                DispatchQueue.main.async {
-                    self.isLoading = false
+            self.reviewsProvider
+                .getReviews(offset: self.state.offset) {result in
+                    
+                    DispatchQueue.main.async {
+                        self.isLoading = false
+                    }
+                    self.gotReviews(result)
                 }
-                self.gotReviews(result)
-            }
+        }
+    }
+    
+    /// Метод для pull-to-refresh
+    func refreshReviews(completion: @escaping () -> Void) {
+        guard state.shouldLoad, !isLoading else { return }
+        isLoading = true
+        state.shouldLoad = false
+        state.offset = 0
+        state.items.removeAll()
+        
+        DispatchQueue.global().async { [weak self] in
+            guard let self = self else {return}
+            self.reviewsProvider
+                .getReviews(offset: self.state.offset) {result in
+                    
+                    DispatchQueue.main.async {
+                        self.isLoading = false
+                    }
+                    self.gotReviews(result)
+                    DispatchQueue.main.async {
+                        completion()
+                    }
+                }
         }
     }
     
@@ -67,11 +98,16 @@ private extension ReviewsViewModel {
             DispatchQueue.global().async { [weak self] in
                 guard let self = self else {return}
                 do {
-                    let reviews = try self.decoder.decode(Reviews.self, from: data)
+                    let reviews = try self.decoder.decode(
+                        Reviews.self,
+                        from: data
+                    )
                     let newItems = reviews.items.map(self.makeReviewItem)
                     let startIndex = self.state.items.count
                     let endIndex = startIndex + newItems.count
-                    let indexPaths = (startIndex..<endIndex).map { IndexPath(row: $0, section: 0) }
+                    let indexPaths = (startIndex..<endIndex).map {
+                        IndexPath(row: $0, section: 0)
+                    }
                     
                     guard !newItems.isEmpty else { return }
                     
@@ -84,11 +120,15 @@ private extension ReviewsViewModel {
                         self.onNewReviewsAdded?(indexPaths)
                     }
                 } catch {
-                    self.state.shouldLoad = true
+                    DispatchQueue.main.async {
+                        self.state.shouldLoad = true
+                    }
                 }
             }
         } catch {
-            self.state.shouldLoad = true
+            DispatchQueue.main.async {
+                self.state.shouldLoad = true
+            }
         }
     }
     
@@ -96,15 +136,17 @@ private extension ReviewsViewModel {
     /// Снимает ограничение на количество строк текста отзыва (раскрывает текст).
     func showMoreReview(with id: UUID) {
         guard
-            let index = state.items.firstIndex(where: { ($0 as? ReviewItem)?.id == id }),
+            let index = state.items.firstIndex(
+                where: { ($0 as? ReviewItem)?.id == id
+                }),
             var item = state.items[index] as? ReviewItem
         else { return }
         item.maxLines = .zero
         state.items[index] = item
         let indexPath = IndexPath(row: index, section: 0)
-            DispatchQueue.main.async {
-                self.onReviewExpanded?([indexPath])
-            }
+        DispatchQueue.main.async {
+            self.onReviewExpanded?([indexPath])
+        }
     }
     
 }
@@ -119,7 +161,9 @@ private extension ReviewsViewModel {
     func makeReviewItem(_ review: Review) -> ReviewItem {
         let reviewText = review.text.attributed(font: .text)
         let created = review.created.attributed(font: .created, color: .created)
-        let username = [review.firstName, review.lastName].joined(separator: " ").attributed(font: .username)
+        let username = [review.firstName, review.lastName].joined(separator: " ").attributed(
+            font: .username
+        )
         let rating = ratingRenderer.ratingImage(review.rating)
         let item = ReviewItem(
             reviewText: reviewText,
@@ -133,7 +177,10 @@ private extension ReviewsViewModel {
     }
     
     func makeTotalReviewItem() -> TotalReviewsItem {
-        let totalReviewsText = "\(state.totalReviewsCount) отзывов".attributed(font: .created, color: .created)
+        let totalReviewsText = "\(state.totalReviewsCount) отзывов".attributed(
+            font: .created,
+            color: .created
+        )
         let item = TotalReviewsItem(
             totalReviewsText: totalReviewsText
         )
@@ -153,14 +200,20 @@ extension ReviewsViewModel: UITableViewDataSource {
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         if indexPath.row < state.items.count {
             let config = state.items[indexPath.row]
-            let cell = tableView.dequeueReusableCell(withIdentifier: config.reuseId, for: indexPath)
+            let cell = tableView.dequeueReusableCell(
+                withIdentifier: config.reuseId,
+                for: indexPath
+            )
             config.update(cell: cell)
             return cell
         } else {
             guard let config = state.totalReviewsItem else {
                 return UITableViewCell()
             }
-            let cell = tableView.dequeueReusableCell(withIdentifier: config.reuseId, for: indexPath)
+            let cell = tableView.dequeueReusableCell(
+                withIdentifier: config.reuseId,
+                for: indexPath
+            )
             config.update(cell: cell)
             return cell
         }
@@ -174,7 +227,9 @@ extension ReviewsViewModel: UITableViewDelegate {
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         if indexPath.row < state.items.count{
-            return state.items[indexPath.row].height(with: tableView.bounds.size)
+            return state
+                .items[indexPath.row]
+                .height(with: tableView.bounds.size)
         } else {
             guard let totalReviewsItem = state.totalReviewsItem else {
                 return 0
@@ -190,7 +245,10 @@ extension ReviewsViewModel: UITableViewDelegate {
         withVelocity velocity: CGPoint,
         targetContentOffset: UnsafeMutablePointer<CGPoint>
     ) {
-        if shouldLoadNextPage(scrollView: scrollView, targetOffsetY: targetContentOffset.pointee.y) {
+        if shouldLoadNextPage(
+            scrollView: scrollView,
+            targetOffsetY: targetContentOffset.pointee.y
+        ) {
             getReviews()
         }
     }
