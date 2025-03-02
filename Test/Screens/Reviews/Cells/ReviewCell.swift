@@ -23,7 +23,7 @@ struct ReviewCellConfig {
     /// Рейтинг отзыва.
     let rating: UIImage
     /// Фото отзыва.
-    let photos: [UIImage]
+    let photos: [UIImage?]
     
     /// Объект, хранящий посчитанные фреймы для ячейки отзыва.
     fileprivate let layout = ReviewCellLayout()

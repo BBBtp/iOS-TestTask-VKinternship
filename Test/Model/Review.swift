@@ -11,12 +11,18 @@ struct Review: Decodable {
     let lastName: String
     /// Рейтинг отзыва.
     let rating: Int
+    /// Аватар пользователя
+    let avatar: String
+    /// Фото отзыва
+    let photos: [String]
     enum CodingKeys: String, CodingKey {
         case text
         case created
         case firstName = "first_name"
         case lastName = "last_name"
         case rating
+        case avatar = "avatar_url"
+        case photos = "photo_urls"
     }
     
 }

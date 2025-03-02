@@ -21,6 +21,7 @@ final class ReviewsViewModel: NSObject {
     private let ratingRenderer: RatingRenderer
     private let decoder: JSONDecoder
     private var hasLoadedOnce = false
+    private let imageCache = NSCache<NSString, UIImage>()
     
     init(
         state: State = State(),
@@ -110,22 +111,30 @@ private extension ReviewsViewModel {
             let data = try result.get()
             
             DispatchQueue.global().async { [weak self] in
-                guard let self = self else {return}
+                guard let self = self else { return }
+                
                 do {
-                    let reviews = try self.decoder.decode(
-                        Reviews.self,
-                        from: data
-                    )
-                    let newItems = reviews.items.map(self.makeReviewItem)
-                    let startIndex = self.state.items.count
-                    let endIndex = startIndex + newItems.count
-                    let indexPaths = (startIndex..<endIndex).map {
-                        IndexPath(row: $0, section: 0)
+                    let reviews = try self.decoder.decode(Reviews.self, from: data)
+                    var newItems: [ReviewItem] = []
+                    let group = DispatchGroup()
+                    
+                    for review in reviews.items {
+                        group.enter()
+                        self.makeReviewItem(review) { item in
+                            newItems.append(item)
+                            group.leave()
+                        }
                     }
                     
-                    guard !newItems.isEmpty else { return }
-                    
-                    DispatchQueue.main.async {
+                    group.notify(queue: DispatchQueue.main) {
+                        let startIndex = self.state.items.count
+                        let endIndex = startIndex + newItems.count
+                        let indexPaths = (startIndex..<endIndex).map {
+                            IndexPath(row: $0, section: 0)
+                        }
+                        
+                        guard !newItems.isEmpty else { return }
+                        
                         self.state.items += newItems
                         self.state.offset += self.state.limit
                         self.state.totalReviewsCount = reviews.count
@@ -133,15 +142,16 @@ private extension ReviewsViewModel {
                         self.state.shouldLoad = self.state.offset < reviews.count
                         self.onNewReviewsAdded?(indexPaths)
                     }
+                    
                 } catch {
                     DispatchQueue.main.async {
-                        self.state.shouldLoad = true
+                        self.state.shouldLoad = false
                     }
                 }
             }
         } catch {
             DispatchQueue.main.async {
-                self.state.shouldLoad = true
+                self.state.shouldLoad = false
             }
         }
     }
@@ -172,35 +182,49 @@ private extension ReviewsViewModel {
     typealias ReviewItem = ReviewCellConfig
     typealias TotalReviewsItem = TotalReviewsCellConfig
     
-    func makeReviewItem(_ review: Review) -> ReviewItem {
+    func makeReviewItem(_ review: Review,completion: @escaping (ReviewItem) -> Void) {
         let reviewText = review.text.attributed(font: .text)
         let created = review.created.attributed(font: .created, color: .created)
         let username = [review.firstName, review.lastName].joined(separator: " ").attributed(
             font: .username
         )
         let rating = ratingRenderer.ratingImage(review.rating)
-        
-        let photos = [
+        let group = DispatchGroup()
+        let avatar = review.avatar
+        let availablePhotos = [
             UIImage(named: "IMG_0001"),
             UIImage(named: "IMG_0002"),
             UIImage(named: "IMG_0003"),
             UIImage(named: "IMG_0004"),
             UIImage(named: "IMG_0005"),
-        ].compactMap {$0}
+        ]
         
-        let randomPhotoCount = Int.random(in: 0..<photos.count)
-        let selectPhotos = Array(photos.prefix(randomPhotoCount))
+        let randomPhotoCount = Int.random(in: 0..<availablePhotos.count)
+        let photos = Array(availablePhotos.prefix(randomPhotoCount))
         
-        let item = ReviewItem(
-            reviewText: reviewText,
-            created: created,
-            onTapShowMore: showMoreReview,
-            avatarImage: UIImage(named: "avatarImage"),
-            username: username,
-            rating: rating,
-            photos: selectPhotos
-        )
-        return item
+        var avatarImage: UIImage? = nil
+        
+        if avatar == review.avatar {
+            group.enter()
+            fetchImage(with: avatar) { image in
+                avatarImage = image
+                group.leave()
+            }
+        }
+        
+        fetchImage(with: review.avatar) { [weak self] avatarImage in
+            guard let self = self else {return}
+            let item = ReviewItem(
+                reviewText: reviewText,
+                created: created,
+                onTapShowMore: self.showMoreReview,
+                avatarImage: avatarImage ?? UIImage(named: "avatarImage"),
+                username: username,
+                rating: rating,
+                photos: photos
+            )
+            completion(item)
+        }
     }
     
     func makeTotalReviewItem() -> TotalReviewsItem {
@@ -213,6 +237,28 @@ private extension ReviewsViewModel {
         )
         return item
     }
+    
+    func fetchImage(with url: String, completion: @escaping (UIImage?) -> Void) {
+            if let cachedImage = imageCache.object(forKey: url as NSString) {
+                completion(cachedImage)
+                return
+            }
+
+            guard let imageUrl = URL(string: url) else {
+                completion(nil)
+                return
+            }
+
+            URLSession.shared.dataTask(with: imageUrl) { [weak self] data, response, error in
+                guard let self = self, let data = data, let image = UIImage(data: data), error == nil else {
+                    DispatchQueue.main.async { completion(nil) }
+                    return
+                }
+
+                self.imageCache.setObject(image, forKey: url as NSString)
+                DispatchQueue.main.async { completion(image) }
+            }.resume()
+        }
     
 }
 
