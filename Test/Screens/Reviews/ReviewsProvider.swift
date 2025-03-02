@@ -30,7 +30,7 @@ extension ReviewsProvider {
         }
 
         // Симулируем сетевой запрос - не менять
-        usleep(.random(in: 900_000...1_000_000))
+        usleep(.random(in: 100_000...1_000_000))
 
         do {
             let data = try Data(contentsOf: url)
